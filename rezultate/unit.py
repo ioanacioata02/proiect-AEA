@@ -2,15 +2,18 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
+from pathlib import Path
 
-st.set_page_config(page_title="Analiză Metode Sorting Networks", layout="wide")
+BASE_DIR = Path(__file__).resolve().parent
 
 file_options = {
-    "nbWires < 8": "csv/bingo-mici.csv",
-    "nbWires >= 8": "csv/bingo2.csv",
-    "nbWires = 10": "csv/bingo10.csv",
-    "nbWires = 17": "csv/bingo17.csv",
+    "nbWires < 8": BASE_DIR / "csv" / "bingo-mici.csv",
+    "nbWires >= 8": BASE_DIR / "csv" / "bingo2.csv",
+    "nbWires = 10": BASE_DIR / "csv" / "bingo10.csv",
+    "nbWires = 17": BASE_DIR / "csv" / "bingo17.csv",
 }
+
+st.set_page_config(page_title="Analiză Metode Sorting Networks", layout="wide")
 
 selected_labels = st.sidebar.multiselect(
     "Fișiere pentru analiză",
