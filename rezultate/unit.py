@@ -387,9 +387,9 @@ with tab7:
 
         st.subheader("Comparații 2 câte 2: Top metode identidicate vs. metode care folosesc fitness-ul din articol")
         top_methods = [
-            "GBF_OutputSize_Fit",
-            "GBF_HammingDistance_SubFit",
-            "GBF_HammingDistance_Fit"
+            "GBF_OutputSize",
+            "GBF_HammingDistance_Sub",
+            "GBF_HammingDistance"
         ]
 
         article_methods = [m for m in sub["method"].unique() if "Article" in m]
@@ -408,7 +408,7 @@ with tab7:
                 comparison_rows.append({
                     "Top method": top,
                     "Article method": article,
-                    "Median diff (top - article)": round(diff, 2),
+                    # "Median diff (top - article)": round(diff, 2),
                     "p-value": round(pval, 8),
                     "Diferență semnificativă": conclusion
                 })
