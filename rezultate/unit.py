@@ -48,11 +48,9 @@ def shorten_method(row):
     flags = ""
     if row["SUBSUMPTION"]:
         flags += "Sub"
-    if row["FITNESS_RANDOM"]:
-        flags += "Fit"
     if row["VARIANCE_RANDOM"]:
         flags += "Var"
-    return f"{heuristic}_{fitness}_{flags}"
+    return f"{heuristic}_{fitness}_{flags}" if flags else f"{heuristic}_{fitness}"
 
 
 df["method"] = df.apply(shorten_method, axis=1)
