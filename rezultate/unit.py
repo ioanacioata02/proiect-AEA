@@ -58,14 +58,15 @@ df["method"] = df.apply(shorten_method, axis=1)
 limit = st.sidebar.selectbox("Valoare limit analizată", sorted(df['limit'].unique()))
 use_log_scale = st.sidebar.checkbox("Scară logaritmică pe axa Y", value=True)
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "Evoluție timp vs Număr de fire",
     "Bar chart (min/avg/max)",
     "Boxplot distribuție",
     "Scatter plot timp vs comparatori",
     "Heatmap-uri",
     "Clasament metode (limit=300)",
-    "Teste statistice & CI"
+    "Teste statistice",
+    "Detalii metode"
 ])
 
 with tab1:
@@ -299,7 +300,8 @@ with tab6:
         ranked_300 = filtered_300.sort_values(by="total_time", ascending=True).reset_index(drop=True)
         ranked_300.index += 1
         if ranked_300.empty:
-            st.info("Nicio metodă cu rată de succes 100% pentru toate valorile pe care le ia numărul de fire cand avem limt=300.")
+            st.info(
+                "Nicio metodă cu rată de succes 100% pentru toate valorile pe care le ia numărul de fire cand avem limt=300.")
         else:
             st.caption("Metodele sunt sortate după suma timpilor medii pe toate valorile numărul de fire.")
             st.dataframe(ranked_300, use_container_width=True)
@@ -327,14 +329,15 @@ with tab6:
         if ranked_2000.empty:
             st.info("Nicio metodă comună cu cele din topul de la limit = 300.")
         else:
-            st.caption("Clasament doar pentru metodele performante de la limit = 300 care au reușit să găsească o rețea de sortare cu 13 fire si limit = 2000.")
+            st.caption(
+                "Clasament doar pentru metodele performante de la limit = 300 care au reușit să găsească o rețea de sortare cu 13 fire si limit = 2000.")
             st.dataframe(
                 ranked_2000[["method", "avg_success", "total_time", "mean_time"]],
                 use_container_width=True
             )
 
 with tab7:
-    st.header("Teste statistice (Kruskal–Wallis) + Interval încredere 95%")
+    st.header("Teste statistice")
 
     subset = df[df["limit"] == limit]
 
@@ -362,37 +365,41 @@ with tab7:
     st.markdown("---")
 
     nbwires_vals = sorted(subset["nbWires"].unique())
-    selected_nbw = st.selectbox("Selectare număr de fire", nbwires_vals)
+    selected_nbw = st.selectbox("Număr de fire", nbwires_vals)
 
     sub = subset[subset["nbWires"] == selected_nbw]
     if sub.empty:
         st.warning("Nu există date pentru această combinație.")
     else:
-        st.subheader("Intervale de încredere (95%) pentru media timpului per metodă")
-        ci_rows = []
-        for method, grp in sub.groupby("method"):
-            values = grp["totalTimeMs"].values
-            if len(values) < 2:
-                continue
-            boot_res = bootstrap((values,), np.mean, confidence_level=0.95, n_resamples=10000, method='percentile')
-            ci_rows.append({
-                "method": method,
-                "mean_time": np.mean(values),
-                "ci_lower": boot_res.confidence_interval.low,
-                "ci_upper": boot_res.confidence_interval.high
-            })
-
-        ci_df = pd.DataFrame(ci_rows).sort_values("mean_time")
-        st.dataframe(ci_df, hide_index=True, use_container_width=True)
+        # st.subheader("Intervale de încredere (95%) pentru media timpului per metodă")
+        # ci_rows = []
+        # for method, grp in sub.groupby("method"):
+        #     values = grp["totalTimeMs"].values
+        #     if len(values) < 2:
+        #         continue
+        #     boot_res = bootstrap((values,), np.mean, confidence_level=0.95, n_resamples=10000, method='percentile')
+        #     ci_rows.append({
+        #         "method": method,
+        #         "mean_time": np.mean(values),
+        #         "ci_lower": boot_res.confidence_interval.low,
+        #         "ci_upper": boot_res.confidence_interval.high
+        #     })
+        #
+        # ci_df = pd.DataFrame(ci_rows).sort_values("mean_time")
+        # st.dataframe(ci_df, hide_index=True, use_container_width=True)
 
         st.subheader("Comparații 2 câte 2: Top metode identidicate vs. metode care folosesc fitness-ul din articol")
+        st.markdown(
+            "Comparatiile s-au realizat folosind testul **Mann–Whitney U** (test non-parametric)"
+        )
+
         top_methods = [
             "GBF_OutputSize",
             "GBF_HammingDistance_Sub",
             "GBF_HammingDistance"
         ]
 
-        article_methods = [m for m in sub["method"].unique() if "Article" in m]
+        article_methods = ["GBF_ArticleFormula_Sub"]
         comparison_rows = []
         for top in top_methods:
             for article in article_methods:
@@ -417,3 +424,28 @@ with tab7:
             st.dataframe(result_df, use_container_width=True, hide_index=True)
         else:
             st.info("Nu sunt suficiente date pentru aceste comparații.")
+
+with tab8:
+    st.header("Detalii metodă — Rată de succes și timp mediu")
+
+    available_limits = sorted(df["limit"].unique())
+    selected_limit = st.selectbox("Limita", available_limits)
+
+    df_selected = df[df["limit"] == selected_limit]
+    available_methods = sorted(df_selected["method"].unique())
+    selected_method = st.selectbox("Metoda", available_methods)
+
+    subset_method = df_selected[df_selected["method"] == selected_method]
+
+    if subset_method.empty:
+        st.warning("Nu există date pentru această metodă la limita selectată.")
+    else:
+        grouped = subset_method.groupby("nbWires").agg(
+            nbComparators=('nbComparators', 'first'),
+            success_rate=('found', 'mean'),
+            mean_time=('totalTimeMs', 'mean')
+        ).reset_index()
+
+        grouped.loc[grouped["nbWires"] == 13, "nbComparators"] = 46
+
+        st.dataframe(grouped.sort_values("nbWires"), use_container_width=True, hide_index=True)
