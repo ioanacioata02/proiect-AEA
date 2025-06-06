@@ -341,7 +341,7 @@ with tab7:
 
     subset = df[df["limit"] == limit]
 
-    st.subheader("Rezultate globale Kruskal–Wallis per număr de fire")
+    st.subheader("Kruskal–Wallis pe totalTimeMs per număr de fire")
     kruskal_rows = []
     for nbw in sorted(subset["nbWires"].unique()):
         sub_nbw = subset[subset["nbWires"] == nbw]
@@ -360,7 +360,34 @@ with tab7:
     if kruskal_rows:
         st.dataframe(pd.DataFrame(kruskal_rows), use_container_width=True, hide_index=True)
     else:
-        st.info("Nu există suficiente metode pentru a efectua testele Kruskal–Wallis.")
+        st.info("Nu există suficiente metode pentru a efectua testele Kruskal–Wallis pe timp.")
+
+    st.subheader("Kruskal–Wallis pe rata de succes per număr de fire")
+    kruskal_success = []
+    for nbw in sorted(subset["nbWires"].unique()):
+        sub_nbw = subset[subset["nbWires"] == nbw]
+        methods = sub_nbw["method"].unique()
+        if len(methods) < 2:
+            continue
+        grouped = [grp["found"].values for _, grp in sub_nbw.groupby("method")]
+        if all(len(g) >= 2 for g in grouped):
+            all_values = np.concatenate(grouped)
+            if np.all(all_values == all_values[0]):
+                continue
+            try:
+                h_stat, p_val = kruskal(*grouped)
+                kruskal_success.append({
+                    "nbWires": nbw,
+                    "p-value": f"{p_val:.2e}",
+                    "Diferențe semnificative": "Da" if p_val < 0.05 else "Nu"
+                })
+            except ValueError:
+                continue
+
+    if kruskal_success:
+        st.dataframe(pd.DataFrame(kruskal_success), use_container_width=True, hide_index=True)
+    else:
+        st.info("Nu există suficiente metode sau toate valorile sunt identice pentru rata de succes.")
 
     st.markdown("---")
 
@@ -388,10 +415,8 @@ with tab7:
         # ci_df = pd.DataFrame(ci_rows).sort_values("mean_time")
         # st.dataframe(ci_df, hide_index=True, use_container_width=True)
 
-        st.subheader("Comparații 2 câte 2: Top metode identidicate vs. metode care folosesc fitness-ul din articol")
-        st.markdown(
-            "Comparatiile s-au realizat folosind testul **Mann–Whitney U** (test non-parametric)"
-        )
+        st.subheader("Comparații 2 câte 2: timp de execuție (totalTimeMs)")
+        st.markdown("Test utilizat: **Mann–Whitney U** (non-parametric)")
 
         top_methods = [
             "GBF_OutputSize",
@@ -415,7 +440,7 @@ with tab7:
                 comparison_rows.append({
                     "Top method": top,
                     "Article method": article,
-                    # "Median diff (top - article)": round(diff, 2),
+                    "Median diff (top - article)": round(diff, 2),
                     "p-value": round(pval, 8),
                     "Diferență semnificativă": conclusion
                 })
@@ -423,7 +448,38 @@ with tab7:
             result_df = pd.DataFrame(comparison_rows).sort_values("p-value")
             st.dataframe(result_df, use_container_width=True, hide_index=True)
         else:
-            st.info("Nu sunt suficiente date pentru aceste comparații.")
+            st.info("Nu sunt suficiente date pentru comparații pe timp.")
+
+        st.subheader("Comparații 2 câte 2: rata de succes")
+        st.markdown("Test utilizat: **Mann–Whitney U** pe valorile 0/1 (non-parametric)")
+
+        comparison_rows_success = []
+        for top in top_methods:
+            for article in article_methods:
+                if top == article:
+                    continue
+                g1 = sub[sub["method"] == top]["found"].values
+                g2 = sub[sub["method"] == article]["found"].values
+                if len(g1) < 2 or len(g2) < 2:
+                    continue
+                if np.all(g1 == g1[0]) and np.all(g2 == g2[0]) and g1[0] == g2[0]:
+                    continue
+                stat, pval = mannwhitneyu(g1, g2, alternative="two-sided")
+                diff = np.mean(g1) - np.mean(g2)
+                conclusion = "Da" if pval < 0.05 else "Nu"
+                comparison_rows_success.append({
+                    "Top method": top,
+                    "Article method": article,
+                    "Median diff (top - article)": round(diff, 2),
+                    "p-value": round(pval, 8),
+                    "Diferență semnificativă": conclusion
+                })
+        if comparison_rows_success:
+            result_df_success = pd.DataFrame(comparison_rows_success).sort_values("p-value")
+            st.dataframe(result_df_success, use_container_width=True, hide_index=True)
+        else:
+            st.info("Nu sunt suficiente date pentru comparații pe rata de succes.")
+
 
 with tab8:
     st.header("Detalii metodă — Rată de succes și timp mediu")
